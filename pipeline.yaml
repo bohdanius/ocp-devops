@@ -1,0 +1,36 @@
+kind: "BuildConfig"
+apiVersion: "v1"
+metadata:
+  name: "java-springboot-pipeline"
+spec:
+  strategy:
+    jenkinsPipelineStrategy:
+      jenkinsfile: |-
+        try {
+            timeout(time: 20, unit: 'MINUTES') {
+              node {
+                stage 'pull'
+                 // git branch: "${GIT_BRANCH}", url: "${GIT_REPO}" // declared in environment
+                 // sh echo "branch: ${GIT_BRANCH}, url: ${GIT_REPO}"
+                stage 'build'
+                  openshiftBuild(buildConfig: 'java-sample-build', showBuildLogs: 'true')
+                stage 'deploy'
+                  openshiftDeploy(deploymentConfig: 'backend')
+              }
+            }
+          } catch (err) {
+             echo "in catch block"
+             echo "Caught: ${err}"
+             currentBuild.result = 'FAILURE'
+             throw err
+          }
+      env:
+        - name: "GIT_REPO"
+          value: "git@github.com:bohdanius/ocp-pipeline-test.git"
+        - name: "GIT_BRANCH"
+          value: "master"
+    type: JenkinsPipeline
+  triggers:
+    - github:
+        secret: secret101
+      type: GitHub
