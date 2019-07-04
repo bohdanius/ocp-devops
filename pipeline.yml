@@ -8,7 +8,7 @@ parameters:
     required: true
   - name: GIT_URL
     required: true
-    value: 'git@github.com:bohdanius/ocp-pipeline-test.git'
+    value: 'git@github.com/ocp-pipeline-test.git'
   - name: GIT_BRANCH
     required: true
     value: 'master'
@@ -32,17 +32,17 @@ objects:
   metadata:
       name: ${APP_NAME}
   spec:
-    nodeSelector: {}
-    output: {}
-    postCommit: {}
-    resources: {}
+    nodeSelector:
+    output:
+    postCommit:
+    resources:
     runPolicy: Serial
-      source:
-        git:
-          ref: ${GIT_BRANCH}
-          uri: ${GIT_URL}
-        contextDir: ${GIT_PATH}
-        type: Git
+    source:
+      git:
+        ref: ${GIT_BRANCH}
+        uri: ${GIT_URL}
+      contextDir: ${GIT_PATH}
+      type: Git
     strategy:
       jenkinsPipelineStrategy:
         jenkinsfilePath: "jenkins/Jenkinsfile"
@@ -61,12 +61,10 @@ objects:
     - generic:
         secret: ${GENERIC_WEBHOOK_SECRET}
       type: Generic
-
-  - apiVersion: v1
-    kind: ImageStream
-    metadata:
-      creationTimestamp: null
-      labels:
-        application: ${APP_NAME}
-        stage: ${STAGE}
-      name: ${APP_NAME}
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    creationTimestamp: null
+    labels:
+      application: ${APP_NAME}
+    name: ${APP_NAME}
