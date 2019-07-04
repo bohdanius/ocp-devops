@@ -45,37 +45,7 @@ objects:
       type: Git
     strategy:
       jenkinsPipelineStrategy:
-        jenkinsfile: |-
-          pipeline {
-              agent {
-                  node {
-                      label 'maven'
-                  }
-              }
-              stages {
-                  stage('Build') {
-                      steps {
-                          printf("pull changes")
-                          checkout
-                          scm
-                          printf("run build")
-                          sh 'mvn build -skipTests'
-                      }
-                  }
-
-                  stage('Test') {
-                      steps {
-                          printf("run unit tests")
-                          sh 'mvn test'
-                      }
-                  }
-                  stage('Deploy') {
-                      steps {
-                          openshiftDeploy(deploymentConfig: '${APPLICATION_NAME}')
-                      }
-                  }
-              }
-          }
+        jenkinsfilePath: "jenkins/Jenkinsfile.groovy"
         env:
         - name: "GIT_REPO"
           value: ${GIT_URL}

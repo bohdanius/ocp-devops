@@ -45,7 +45,7 @@ objects:
           uri: ${GIT_URL}
       strategy:
         jenkinsPipelineStrategy:
-          jenkinsfilePath: Jenkinsfile
+          jenkinsfilePath: Jenkinsfile.groovy
         type: JenkinsPipeline
 
 parameters:
