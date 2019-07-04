@@ -10,27 +10,27 @@ objects:
         app: ${APPLICATION_NAME}
       name: ${APPLICATION_NAME}
 
-  - apiVersion: v1
-    kind: BuildConfig
-    metadata:
-      labels:
-        app: ${APPLICATION_NAME}
-      name: ${APPLICATION_NAME}
-    spec:
-      output:
-        to:
-          kind: ImageStreamTag
-          name: '${APPLICATION_NAME}:latest'
-      source:
-        git:
-          uri: ${GIT_URL}
-        type: Git
-      strategy:
-        dockerStrategy:
-          dockerfilePath: Dockerfile
-      triggers:
-        - imageChange: {}
-      type: ImageChange
+#  - apiVersion: v1
+#    kind: BuildConfig
+#    metadata:
+#      labels:
+#        app: ${APPLICATION_NAME}
+#      name: ${APPLICATION_NAME}
+#    spec:
+#      output:
+#        to:
+#          kind: ImageStreamTag
+#          name: '${APPLICATION_NAME}:latest'
+#      source:
+#        git:
+#          uri: ${GIT_URL}
+#        type: Git
+#      strategy:
+#        dockerStrategy:
+#          dockerfilePath: Dockerfile
+#      triggers:
+#        - imageChange: {}
+#      type: ImageChange
 
   - apiVersion: v1
     kind: BuildConfig

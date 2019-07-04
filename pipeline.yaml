@@ -1,36 +1,91 @@
-kind: "BuildConfig"
-apiVersion: "v1"
+apiVersion: v1
+kind: Template
 metadata:
-  name: "java-springboot-pipeline"
-spec:
-  strategy:
-    jenkinsPipelineStrategy:
-      jenkinsfile: |-
-        try {
-            timeout(time: 20, unit: 'MINUTES') {
-              node {
-                stage 'pull'
-                 // git branch: "${GIT_BRANCH}", url: "${GIT_REPO}" // declared in environment
-                 // sh echo "branch: ${GIT_BRANCH}, url: ${GIT_REPO}"
-                stage 'build'
-                  openshiftBuild(buildConfig: 'java-sample-build', showBuildLogs: 'true')
-                stage 'deploy'
-                  openshiftDeploy(deploymentConfig: 'backend')
-              }
-            }
-          } catch (err) {
-             echo "in catch block"
-             echo "Caught: ${err}"
-             currentBuild.result = 'FAILURE'
-             throw err
-          }
-      env:
-        - name: "GIT_REPO"
-          value: "git@github.com:bohdanius/ocp-pipeline-test.git"
-        - name: "GIT_BRANCH"
-          value: "master"
-    type: JenkinsPipeline
-  triggers:
-    - github:
-        secret: secret101
-      type: GitHub
+  creationTimestamp: null
+  name: ci-build
+parameters:
+  - name: APP_NAME
+    required: true
+#  - name: STAGE
+#    required: true
+  - name: GIT_URL
+    required: true
+    value: 'git@github.com:bohdanius/ocp-pipeline-test.git'
+  - name: GIT_BRANCH
+    required: true
+    value: 'master'
+  - name: GIT_PATH
+    required: false
+    value: ''
+  - name: GITHUB_WEBHOOK_SECRET
+    description: GitHub trigger secret
+    from: '[a-zA-Z0-9]{8}'
+    generate: expression
+    required: true
+  - name: GENERIC_WEBHOOK_SECRET
+    description: Generic build trigger secret
+    from: '[a-zA-Z0-9]{8}'
+    generate: expression
+    required: true
+#  - name: NEXUS_HOST
+#    description: "host of nexus repo"
+#    required: true
+objects:
+- kind: "BuildConfig"
+  apiVersion: "v1"
+  metadata:
+      name: ${APP_NAME}
+  spec:
+    runPolicy: Serial
+      source:
+        git:
+          ref: ${GIT_BRANCH}
+          uri: ${GIT_URL}
+        contextDir: ${GIT_PATH}
+        type: Git
+    strategy:
+      jenkinsPipelineStrategy:
+        jenkinsfilePath: "jenkins/Jenkinsfile"
+  #      jenkinsfile: |-
+  #        try {
+  #            timeout(time: 20, unit: 'MINUTES') {
+  #              node {
+  #                stage 'pull'
+  #                 // git branch: "${GIT_BRANCH}", url: "${GIT_REPO}" // declared in environment
+  #                 // sh echo "branch: ${GIT_BRANCH}, url: ${GIT_REPO}"
+  #                stage 'build'
+  #                  openshiftBuild(buildConfig: 'java-sample-build', showBuildLogs: 'true')
+  #                stage 'deploy'
+  #                  openshiftDeploy(deploymentConfig: 'backend')
+  #              }
+  #            }
+  #          } catch (err) {
+  #             echo "in catch block"
+  #             echo "Caught: ${err}"
+  #             currentBuild.result = 'FAILURE'
+  #             throw err
+  #          }
+        env:
+          - name: "GIT_REPO"
+            value: ${GIT_URL}
+          - name: "GIT_BRANCH"
+            value: ${GIT_BRANCH}
+          - name: "APPLICATION_NAME"
+              value: ${APP_NAME}
+      type: JenkinsPipeline
+    triggers:
+      - github:
+          secret: ${GITHUB_WEBHOOK_SECRET}
+        type: GitHub
+      - generic:
+          secret: ${GENERIC_WEBHOOK_SECRET}
+        type: Generic
+
+  - apiVersion: v1
+    kind: ImageStream
+    metadata:
+      creationTimestamp: null
+      labels:
+        application: ${APP_NAME}
+        stage: ${STAGE}
+      name: ${APP_NAME}
