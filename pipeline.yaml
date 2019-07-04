@@ -6,8 +6,6 @@ metadata:
 parameters:
   - name: APP_NAME
     required: true
-#  - name: STAGE
-#    required: true
   - name: GIT_URL
     required: true
     value: 'git@github.com:bohdanius/ocp-pipeline-test.git'
@@ -27,9 +25,7 @@ parameters:
     from: '[a-zA-Z0-9]{8}'
     generate: expression
     required: true
-#  - name: NEXUS_HOST
-#    description: "host of nexus repo"
-#    required: true
+
 objects:
 - apiVersion: v1
   kind: BuildConfig
@@ -50,40 +46,21 @@ objects:
     strategy:
       jenkinsPipelineStrategy:
         jenkinsfilePath: "jenkins/Jenkinsfile"
-  #      jenkinsfile: |-
-  #        try {
-  #            timeout(time: 20, unit: 'MINUTES') {
-  #              node {
-  #                stage 'pull'
-  #                 // git branch: "${GIT_BRANCH}", url: "${GIT_REPO}" // declared in environment
-  #                 // sh echo "branch: ${GIT_BRANCH}, url: ${GIT_REPO}"
-  #                stage 'build'
-  #                  openshiftBuild(buildConfig: 'java-sample-build', showBuildLogs: 'true')
-  #                stage 'deploy'
-  #                  openshiftDeploy(deploymentConfig: 'backend')
-  #              }
-  #            }
-  #          } catch (err) {
-  #             echo "in catch block"
-  #             echo "Caught: ${err}"
-  #             currentBuild.result = 'FAILURE'
-  #             throw err
-  #          }
         env:
-          - name: "GIT_REPO"
-            value: ${GIT_URL}
-          - name: "GIT_BRANCH"
-            value: ${GIT_BRANCH}
-          - name: "APPLICATION_NAME"
-              value: ${APP_NAME}
+        - name: "GIT_REPO"
+          value: ${GIT_URL}
+        - name: "GIT_BRANCH"
+          value: ${GIT_BRANCH}
+        - name: "APPLICATION_NAME"
+          value: ${APP_NAME}
       type: JenkinsPipeline
     triggers:
-      - github:
-          secret: ${GITHUB_WEBHOOK_SECRET}
-        type: GitHub
-      - generic:
-          secret: ${GENERIC_WEBHOOK_SECRET}
-        type: Generic
+    - github:
+        secret: ${GITHUB_WEBHOOK_SECRET}
+      type: GitHub
+    - generic:
+        secret: ${GENERIC_WEBHOOK_SECRET}
+      type: Generic
 
   - apiVersion: v1
     kind: ImageStream
