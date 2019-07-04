@@ -8,7 +8,7 @@ parameters:
     required: true
   - name: GIT_URL
     required: true
-    value: 'git@github.com/ocp-pipeline-test.git'
+    value: 'https://github.com/bohdanius/ocp-pipeline-test'
   - name: GIT_BRANCH
     required: true
     value: 'master'

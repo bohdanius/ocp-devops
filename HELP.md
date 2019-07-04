@@ -13,5 +13,13 @@ The following guides illustrate how to use some features concretely:
 * [Building REST services with Spring](https://spring.io/guides/tutorials/bookmarks/)
 * [Building a RESTful Web Service with Spring Boot Actuator](https://spring.io/guides/gs/actuator-service/)
 
-oc apply -f pipeline.yaml 
-oc start-build java-springboot-pipeline
+jenkins-pipeline
+dualstack.nodes-openshift-2010944965.us-east-1.elb.amazonaws.com.
+
+https://github.com/bohdanius/ocp-pipeline-test
+
+oc delete project pipeline
+oc new-project pipeline
+oc apply -f pipeline.yml
+oc process -p APP_NAME=springboot-ci ci-build | oc create -f -
+oc start-build springboot-ci

@@ -1,16 +1,30 @@
 stage('Build') {
-  printf("pull changes")
-  checkout scm,
-  printf("run build")
-  sh 'mvn build -skipTests'
- }
+  step() {
+  printf(
+  "pull changes"
+  )
+  checkout
+  scm
+}
+step() {
+  printf(
+  "run build"
+  )
+  sh
+  'mvn build -skipTests'
+}
+}
 
 stage('Test') {
-  printf("run unit tests")
-  sh 'mvn test'
+  step() {
+    printf("run unit tests")
+    sh 'mvn test'
+  }
 }
 stage('Deploy') {
-  openshiftDeploy(deploymentConfig: '${APPLICATION_NAME}')
+  step() {
+   openshiftDeploy(deploymentConfig: '${APPLICATION_NAME}')
+  }
 }
 
 
