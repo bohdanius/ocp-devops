@@ -1,0 +1,188 @@
+apiVersion: v1
+kind: Template
+metadata:
+  creationTimestamp: null
+  name: ci-build
+parameters:
+  - name: APP_NAME
+    required: true
+  - name: GIT_URL
+    required: true
+    value: 'https://github.com/bohdanius/ocp-pipeline-test'
+  - name: SIT_NS
+    required: true
+    value: 'pipeline-sit'
+  - name: CICD_NS
+    required: true
+    value: 'pipeline'
+  - name: GIT_BRANCH
+    required: true
+    value: 'master'
+  - name: GIT_PATH
+    required: false
+    value: ''
+  - name: GITHUB_WEBHOOK_SECRET
+    description: GitHub trigger secret
+    from: '[a-zA-Z0-9]{8}'
+    generate: expression
+    required: true
+  - name: GENERIC_WEBHOOK_SECRET
+    description: Generic build trigger secret
+    from: '[a-zA-Z0-9]{8}'
+    generate: expression
+    required: true
+
+objects:
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+      name: ${APP_NAME}-ci
+  spec:
+    nodeSelector:
+    output:
+    postCommit:
+    resources:
+    runPolicy: Serial
+    source:
+      git:
+        ref: ${GIT_BRANCH}
+        uri: ${GIT_URL}
+      contextDir: ${GIT_PATH}
+      type: Git
+    strategy:
+      jenkinsPipelineStrategy:
+        jenkinsfile: |-
+          pipeline {
+              agent {
+                  node {
+                      label 'maven'
+                  }
+              }
+              stages {
+                  stage('Pull') {
+                      steps {
+                          echo ">>>>>>>>>>> pull changes"
+                          checkout([
+                                  $class           : 'GitSCM',
+                                  branches         : [[name: "*/master"]],
+                                  userRemoteConfigs: [[url: "${GIT_REPO}"]]
+                          ]);
+                      }
+                  }
+                  stage('Build') {
+                      steps {
+                          echo ">>>>>>>>>>> run build"
+                          sh 'mvn package -DskipTests'
+                      }
+                  }
+
+                  stage('Unit Test') {
+                      steps {
+                          echo ">>>>>>>>>>> run unit tests"
+                          sh 'mvn test'
+                      }
+                  }
+
+                  stage('Build Image') {
+                      steps {
+                          script {
+                              openshift.withCluster() {
+                                  openshift.selector("bc", "${APPLICATION_NAME}-image").startBuild("--from-dir=./target", "--wait=true")
+                                  openshift.tag("${CICD_NS}/${APPLICATION_NAME}:latest", "${SIT_NS}/${APPLICATION_NAME}:latest")
+                              }
+                          }
+                      }
+                  }
+
+                  stage('Deploy to SIT') {
+                      steps {
+                          script {
+                              openshift.withCluster() {
+                                  openshift.withProject('${SIT_NS}') {
+                                      if (openshift.selector('dc', '${APPLICATION_NAME}').exists()) {
+                                          openshift.selector('dc', '${APPLICATION_NAME}').delete()
+                                          openshift.selector('svc', '${APPLICATION_NAME}').delete()
+                                          openshift.selector('route', '${APPLICATION_NAME}').delete()
+                                      }
+                                      openshift.newApp("${SIT_NS}/${APPLICATION_NAME}:latest").narrow("svc").expose()
+                                  }
+
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+        env:
+        - name: "GIT_REPO"
+          value: ${GIT_URL}
+        - name: "GIT_BRANCH"
+          value: ${GIT_BRANCH}
+        - name: "APPLICATION_NAME"
+          value: ${APP_NAME}
+      type: JenkinsPipeline
+    triggers:
+    - github:
+        secret: ${GITHUB_WEBHOOK_SECRET}
+      type: GitHub
+    - generic:
+        secret: ${GENERIC_WEBHOOK_SECRET}
+      type: Generic
+
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    labels:
+      build: ${APP_NAME}-image
+    name: ${APP_NAME}-image
+  spec:
+    output:
+      to:
+        kind: ImageStreamTag
+        name: ${APP_NAME}:latest
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      binary: {}
+      type: Binary
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: s2i-java:3.0-java8
+      type: Source
+    triggers:
+      - github:
+          secret: ${GITHUB_WEBHOOK_SECRET}
+        type: GitHub
+      - generic:
+          secret: ${GENERIC_WEBHOOK_SECRET}
+        type: Generic
+
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    creationTimestamp: null
+    labels:
+      application: ${APP_NAME}
+    name: ${APP_NAME}
+
+
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    name: s2i-java
+  spec:
+    lookupPolicy:
+      local: false
+    tags:
+      - annotations:
+          openshift.io/imported-from: fabric8/s2i-java:3.0-java8
+        from:
+          kind: DockerImage
+          name: fabric8/s2i-java:3.0-java8
+        importPolicy: {}
+        name: 3.0-java8
+        referencePolicy:
+          type: Source

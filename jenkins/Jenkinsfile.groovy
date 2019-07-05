@@ -5,49 +5,57 @@ pipeline {
         }
     }
     stages {
+        stage('Pull') {
+            steps {
+                echo ">>>>>>>>>>> pull changes"
+                checkout([
+                        $class           : 'GitSCM',
+                        branches         : [[name: "*/master"]],
+                        userRemoteConfigs: [[url: "${GIT_REPO}"]]
+                ]);
+            }
+        }
         stage('Build') {
             steps {
-                printf("pull changes")
-                checkout
-                scm
-                printf("run build")
-                sh 'mvn build -skipTests'
+                echo ">>>>>>>>>>> run build"
+                sh 'mvn package -DskipTests'
             }
         }
 
         stage('Test') {
             steps {
-                printf("run unit tests")
+                echo ">>>>>>>>>>> run unit tests"
                 sh 'mvn test'
             }
         }
-        stage('Deploy') {
+
+        stage('Build Image') {
             steps {
-                openshiftDeploy(deploymentConfig: '${APPLICATION_NAME}')
+                script {
+                    openshift.withCluster() {
+                        openshift.selector("bc", "${APPLICATION_NAME}-image").startBuild("--from-dir=./target", "--wait=true")
+                        openshift.tag("${CICD_NS}/${APPLICATION_NAME}:latest", "${SIT_NS}/${APPLICATION_NAME}:latest")
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to SIT') {
+            steps {
+                script {
+                    openshift.withCluster() {
+                        openshift.withProject('${SIT_NS}') {
+                            if (openshift.selector('dc', '${APPLICATION_NAME}').exists()) {
+                                openshift.selector('dc', '${APPLICATION_NAME}').delete()
+                                openshift.selector('svc', '${APPLICATION_NAME}').delete()
+                                openshift.selector('route', '${APPLICATION_NAME}').delete()
+                            }
+                            openshift.newApp("${SIT_NS}/${APPLICATION_NAME}:latest").narrow("svc").expose()
+                        }
+
+                    }
+                }
             }
         }
     }
 }
-
-//  steps {
-//  echo
-//  'Building..'
-//}
-
-//steps {
-//echo 'Testing..'
-//sh 'mvn test'
-//}
-
-
-//stage('Deploy Application') {
-//steps {
-//script {
-//openshift.withCluster() {
-//openshift.withProject() {
-//openshiftDeploy(deploymentConfig: '${APPLICATION_NAME}')
-//}
-//}
-//}
-//}
-//}
