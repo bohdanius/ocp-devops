@@ -57,5 +57,21 @@ pipeline {
                 }
             }
         }
+
+        stage('Run Autotests') {
+            steps {
+                echo ">>>>>>>>>>> pull autotests"
+                sh 'cd ..'
+                checkout([
+                        $class           : 'GitSCM',
+                        branches         : [[name: "*/master"]],
+                        userRemoteConfigs: [[url: "${GIT_REPO_AUTO}"]]
+                ]);
+                openshift.withProject('${SIT_NS}') {
+                    def host = openshift.selector('route', '${APPLICATION_NAME}').object().spec.host
+                    sh 'mvn test -Dserver.host=${host} -Dserver.port=8080'
+                }
+            }
+        }
     }
 }

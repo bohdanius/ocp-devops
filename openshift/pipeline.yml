@@ -9,6 +9,9 @@ parameters:
   - name: GIT_URL
     required: true
     value: 'https://github.com/bohdanius/ocp-pipeline-test'
+  - name: GIT_REPO_AUTO
+    required: true
+    value: 'https://github.com/bohdanius/ocp-pipeline-auto.git'
   - name: SIT_NS
     required: true
     value: 'pipeline-sit'
@@ -76,7 +79,7 @@ objects:
                       }
                   }
 
-                  stage('Unit Test') {
+                  stage('Test') {
                       steps {
                           echo ">>>>>>>>>>> run unit tests"
                           sh 'mvn test'
@@ -111,6 +114,26 @@ objects:
                           }
                       }
                   }
+
+                  stage('Run Autotests') {
+                      steps {
+                          echo ">>>>>>>>>>> pull autotests"
+                          sh 'cd ..'
+                          checkout([
+                                  $class           : 'GitSCM',
+                                  branches         : [[name: "*/master"]],
+                                  userRemoteConfigs: [[url: "${GIT_REPO_AUTO}"]]
+                          ]);
+                          script {
+                            openshift.withCluster() {
+                              openshift.withProject('${SIT_NS}') {
+                                  def host = openshift.selector('route', '${APPLICATION_NAME}').object().spec.host
+                                  sh 'mvn test -Dserver.host=${host} -Dserver.port=8080'
+                              }
+                            }
+                      }
+                    }
+                  }
               }
           }
         env:
@@ -120,6 +143,8 @@ objects:
           value: ${GIT_BRANCH}
         - name: "APPLICATION_NAME"
           value: ${APP_NAME}
+        - name: "GIT_REPO_AUTO"
+          value: ${GIT_REPO_AUTO}
       type: JenkinsPipeline
     triggers:
     - github:
