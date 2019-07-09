@@ -67,9 +67,14 @@ pipeline {
                         branches         : [[name: "*/master"]],
                         userRemoteConfigs: [[url: "${GIT_REPO_AUTO}"]]
                 ]);
-                openshift.withProject('${SIT_NS}') {
-                    def host = openshift.selector('route', '${APPLICATION_NAME}').object().spec.host
-                    sh 'mvn test -Dserver.host=${host} -Dserver.port=8080'
+                script {
+                    openshift.withCluster() {
+                        openshift.withProject("${SIT_NS}") {
+                            def pod = openshift.selector('pod', [app: "${APPLICATION_NAME}"]).object()
+                            sh "mvn test surefire-report:report -Dserver.host=http://${pod.status.podIP} -Dserver.port=8080"
+
+                        }
+                    }
                 }
             }
         }

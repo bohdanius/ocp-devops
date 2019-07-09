@@ -116,26 +116,26 @@ objects:
                   }
 
                   stage('Run Autotests') {
-                      steps {
-                          echo ">>>>>>>>>>> pull autotests"
-                          sh 'cd ..'
-                          checkout([
-                                  $class           : 'GitSCM',
-                                  branches         : [[name: "*/master"]],
-                                  userRemoteConfigs: [[url: "${GIT_REPO_AUTO}"]]
-                          ]);
-                          script {
-                            openshift.withCluster() {
-                              openshift.withProject('${SIT_NS}') {
-                                  def host = openshift.selector('route', '${APPLICATION_NAME}').object().spec.host
-                                  sh 'mvn test -Dserver.host=${host} -Dserver.port=8080'
-                              }
-                            }
-                      }
+                    steps {
+                      echo ">>>>>>>>>>> pull autotests"
+                      sh 'cd ..'
+                      checkout([
+                              $class           : 'GitSCM',
+                              branches         : [[name: "*/master"]],
+                              userRemoteConfigs: [[url: "${GIT_REPO_AUTO}"]]
+                      ]);
+                      script {
+                        openshift.withCluster() {
+                          openshift.withProject("${SIT_NS}") {
+                              def pod = openshift.selector('pod', [ app: "${APPLICATION_NAME}"]).object()
+                              sh "mvn test -Dserver.host=http://${pod.status.podIP} -Dserver.port=8080"
+
+                          }
+                        }
                     }
                   }
+                }
               }
-          }
         env:
         - name: "GIT_REPO"
           value: ${GIT_URL}
